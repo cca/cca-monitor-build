@@ -1,0 +1,83 @@
+groups:
+  - name: availability
+    rules:
+      - alert: TargetDown
+        expr: up{job=~"linux|windows|vmware|netapp"} == 0
+        for: 3m
+        labels: {severity: critical}
+        annotations:
+          summary: "{{ $labels.instance }} ({{ $labels.job }}) is down"
+
+      # Dead-man's switch: always firing. Point it at healthchecks.io
+      - alert: Watchdog
+        expr: vector(1)
+        labels: {severity: none}
+        annotations:
+          summary: "Alerting pipeline heartbeat"
+
+  - name: linux
+    rules:
+      - alert: LinuxDiskLow
+        expr: |
+          node_filesystem_avail_bytes{fstype!~"tmpfs|overlay|squashfs"}
+            / node_filesystem_size_bytes{fstype!~"tmpfs|overlay|squashfs"} < 0.15
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.instance }} {{ $labels.mountpoint }} under 15% free"
+
+      - alert: LinuxMemoryLow
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.10
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.instance }} under 10% memory available"
+
+  - name: windows
+    rules:
+      - alert: WindowsDiskLow
+        expr: |
+          windows_logical_disk_free_bytes{volume!~"HarddiskVolume.*"}
+            / windows_logical_disk_size_bytes{volume!~"HarddiskVolume.*"} < 0.15
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.instance }} {{ $labels.volume }} under 15% free"
+
+      - alert: WindowsMemoryLow
+        expr: windows_os_physical_memory_free_bytes / windows_cs_physical_memory_bytes < 0.10
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.instance }} under 10% memory free"
+
+  - name: vmware
+    rules:
+      - alert: DatastoreLow
+        expr: vmware_datastore_freespace_size / vmware_datastore_capacity_size < 0.15
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Datastore {{ $labels.ds_name }} under 15% free"
+
+      - alert: ESXiHostDown
+        expr: vmware_host_power_state == 0
+        for: 3m
+        labels: {severity: critical}
+        annotations:
+          summary: "ESXi host {{ $labels.host_name }} not powered on"
+
+      - alert: OldSnapshot
+        expr: (time() - vmware_vm_snapshot_timestamp_seconds) > 7 * 86400
+        labels: {severity: warning}
+        annotations:
+          summary: "Snapshot older than 7 days on {{ $labels.vm_name }}"
+
+  - name: netapp
+    rules:
+      - alert: NetAppVolumeNearFull
+        expr: volume_size_used_percent > 85
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $labels.volume }} on {{ $labels.cluster }} over 85% full"

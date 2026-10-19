@@ -1,0 +1,14 @@
+route:
+  receiver: email
+  group_by: [alertname, instance]
+  group_wait: 30s
+  repeat_interval: 4h
+
+receivers:
+  - name: email
+    email_configs:
+      - to: mgoh@cca.edu
+        from: netsys@cca.edu
+        smarthost: smtp.cca.edu:25
+#        auth_username: 
+#        auth_password: smtp-password

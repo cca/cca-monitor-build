@@ -1,0 +1,1 @@
+[{"targets": ["host1:9100","host2:9100"], "labels": {"env": "onprem"}}]
